@@ -1,11 +1,12 @@
 ### Hi, I'm Denis 👋
 
-![Denis Marchenko](https://raw.githubusercontent.com/denismarchenkoRelativity/denismarchenkoRelativity/main/dark_mode.svg#gh-dark-mode-only)
-![Denis Marchenko](https://raw.githubusercontent.com/denismarchenkoRelativity/denismarchenkoRelativity/main/light_mode.svg#gh-light-mode-only)
+![Denis Marchenko](https://raw.githubusercontent.com/denismarchenkoRelativity/denismarchenkoRelativity/main/dark_mode.svg)
+
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=denismarchenkoRelativity&layout=compact&langs_count=8&bg_color=061f08&title_color=9bbc0f&text_color=5cee5c&icon_color=5cee5c&border_color=1a4d1a)
 
 <!--
-Neofetch-style profile card. The SVGs are regenerated daily by .github/workflows/build.yml,
-which runs today.py to refresh the GitHub Stats block (repos, commits, stars, followers, LOC, age).
-Photo: replace the <rect>/<text> "DM" block in dark_mode.svg and light_mode.svg with
-<image href="data:image/png;base64,...." x="15" y="15" width="350" height="480"/>.
+Neofetch-style profile card (single always-green CRT theme, gusata style).
+SVGs regenerated daily by .github/workflows/build.yml -> today.py
+(stats block: contributions, repos, commits, followers, LOC, age).
+Photo is base64-embedded in both SVG files with an edge-fade mask.
 -->
