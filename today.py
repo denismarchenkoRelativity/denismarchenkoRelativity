@@ -12,7 +12,7 @@ import hashlib
 # Issues and pull requests permissions not needed at the moment, but may be used in the future
 HEADERS = {'authorization': 'token '+ os.environ['ACCESS_TOKEN']}
 USER_NAME = os.environ['USER_NAME'] # 'Andrew6rant'
-QUERY_COUNT = {'user_getter': 0, 'follower_getter': 0, 'graph_repos_stars': 0, 'recursive_loc': 0, 'graph_commits': 0, 'loc_query': 0}
+QUERY_COUNT = {'user_getter': 0, 'follower_getter': 0, 'graph_repos_stars': 0, 'recursive_loc': 0, 'graph_commits': 0, 'loc_query': 0, 'top_languages': 0}
 
 
 def daily_readme(birthday):
@@ -68,6 +68,41 @@ def graph_commits(start_date, end_date):
     variables = {'start_date': start_date,'end_date': end_date, 'login': USER_NAME}
     request = simple_request(graph_commits.__name__, query, variables)
     return int(request.json()['data']['user']['contributionsCollection']['contributionCalendar']['totalContributions'])
+
+
+def top_languages(max_langs=3):
+    """
+    Aggregates language byte sizes across accessible non-fork repositories
+    and returns a formatted 'C# 37%, Python 32%, HTML 31%' string
+    """
+    query_count('top_languages')
+    query = '''
+    query($login: String!) {
+        user(login: $login) {
+            repositories(first: 100, ownerAffiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
+                nodes {
+                    isFork
+                    languages(first: 10, orderBy: {field: SIZE, direction: DESC}) {
+                        edges { size node { name } }
+                    }
+                }
+            }
+        }
+    }'''
+    request = simple_request(top_languages.__name__, query, {'login': USER_NAME})
+    sizes = {}
+    for repo in request.json()['data']['user']['repositories']['nodes']:
+        if repo['isFork']:
+            continue
+        for edge in repo['languages']['edges']:
+            name = edge['node']['name']
+            sizes[name] = sizes.get(name, 0) + edge['size']
+    total = sum(sizes.values())
+    if not total:
+        return 'n/a'
+    top = sorted(sizes.items(), key=lambda kv: kv[1], reverse=True)[:max_langs]
+    short = {'TypeScript': 'TS', 'JavaScript': 'JS', 'PowerShell': 'PS'}
+    return ', '.join(f"{short.get(name, name)} {round(100 * size / total)}%" for name, size in top)
 
 
 def graph_repos_stars(count_type, owner_affiliation, cursor=None, add_loc=0, del_loc=0):
@@ -316,13 +351,14 @@ def stars_counter(data):
     return total_stars
 
 
-def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data, contrib_year_data):
+def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data, contrib_year_data, top_langs_data):
     """
     Parse SVG files and update elements with my age, commits, stars, repositories, and lines written
     """
     tree = etree.parse(filename)
     root = tree.getroot()
     justify_format(root, 'contrib_year_data', contrib_year_data, 30)
+    justify_format(root, 'top_langs_data', top_langs_data, 42)
     justify_format(root, 'commit_data', commit_data, 22)
     justify_format(root, 'star_data', star_data, 14)
     justify_format(root, 'repo_data', repo_data, 6)
@@ -463,11 +499,13 @@ if __name__ == '__main__':
     year_ago = now_utc - datetime.timedelta(days=365)
     contrib_year_data, contrib_year_time = perf_counter(graph_commits, year_ago.isoformat(), now_utc.isoformat())
     formatter('yearly contributions', contrib_year_time)
+    top_langs_data, top_langs_time = perf_counter(top_languages)
+    formatter('top languages', top_langs_time)
 
     for index in range(len(total_loc)-1): total_loc[index] = '{:,}'.format(total_loc[index])
 
-    svg_overwrite('dark_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data)
-    svg_overwrite('light_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data)
+    svg_overwrite('dark_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data)
+    svg_overwrite('light_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data)
 
     print('\033[F\033[F\033[F\033[F\033[F\033[F\033[F\033[F',
         '{:<21}'.format('Total function time:'), '{:>11}'.format('%.4f' % (user_time + age_time + loc_time + commit_time + star_time + repo_time + contrib_time)),
