@@ -70,6 +70,24 @@ def graph_commits(start_date, end_date):
     return int(request.json()['data']['user']['contributionsCollection']['contributionCalendar']['totalContributions'])
 
 
+def prs_in_range(start_date, end_date):
+    """
+    Pull requests opened within the window (self-view includes private/org PRs)
+    """
+    query_count('graph_commits')
+    query = '''
+    query($start_date: DateTime!, $end_date: DateTime!, $login: String!) {
+        user(login: $login) {
+            contributionsCollection(from: $start_date, to: $end_date) {
+                totalPullRequestContributions
+            }
+        }
+    }'''
+    variables = {'start_date': start_date, 'end_date': end_date, 'login': USER_NAME}
+    request = simple_request(prs_in_range.__name__, query, variables)
+    return int(request.json()['data']['user']['contributionsCollection']['totalPullRequestContributions'])
+
+
 def all_time_stats(acc_date):
     """
     Sums contribution-calendar totals and commit contributions per calendar year
@@ -394,7 +412,7 @@ def stars_counter(data):
     return total_stars
 
 
-def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data, contrib_year_data, top_langs_data, contrib_total_data, repos_total_data):
+def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data, contrib_year_data, top_langs_data, contrib_total_data, repos_total_data, prs_year_data):
     """
     Parse SVG files and update elements with my age, commits, stars, repositories, and lines written
     """
@@ -403,6 +421,7 @@ def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib
     justify_format(root, 'contrib_year_data', contrib_year_data, 30)
     justify_format(root, 'contrib_total_data', contrib_total_data, 31)
     justify_format(root, 'repos_total_data', repos_total_data, 27)
+    justify_format(root, 'prs_year_data', prs_year_data, 33)
     justify_format(root, 'top_langs_data', top_langs_data, 42)
     justify_format(root, 'commit_data', commit_data, 11)
     justify_format(root, 'star_data', star_data, 14)
@@ -544,6 +563,8 @@ if __name__ == '__main__':
     year_ago = now_utc - datetime.timedelta(days=365)
     contrib_year_data, contrib_year_time = perf_counter(graph_commits, year_ago.isoformat(), now_utc.isoformat())
     formatter('yearly contributions', contrib_year_time)
+    prs_year_data, prs_year_time = perf_counter(prs_in_range, year_ago.isoformat(), now_utc.isoformat())
+    formatter('yearly PRs', prs_year_time)
     top_langs_data, top_langs_time = perf_counter(top_languages)
     formatter('top languages', top_langs_time)
     all_time, all_time_t = perf_counter(all_time_stats, acc_date)
@@ -554,8 +575,8 @@ if __name__ == '__main__':
 
     for index in range(len(total_loc)-1): total_loc[index] = '{:,}'.format(total_loc[index])
 
-    svg_overwrite('dark_mode.svg', age_data, commit_total_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data, contrib_total_data, repos_total_data)
-    svg_overwrite('light_mode.svg', age_data, commit_total_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data, contrib_total_data, repos_total_data)
+    svg_overwrite('dark_mode.svg', age_data, commit_total_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data, contrib_total_data, repos_total_data, prs_year_data)
+    svg_overwrite('light_mode.svg', age_data, commit_total_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data, contrib_total_data, repos_total_data, prs_year_data)
 
     print('\033[F\033[F\033[F\033[F\033[F\033[F\033[F\033[F',
         '{:<21}'.format('Total function time:'), '{:>11}'.format('%.4f' % (user_time + age_time + loc_time + commit_time + star_time + repo_time + contrib_time)),
