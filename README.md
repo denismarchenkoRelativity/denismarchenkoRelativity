@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./dark_mode.svg">
-  <source media="(prefers-color-scheme: light)" srcset="./light_mode.svg">
-  <img alt="Denis Marchenko" src="./dark_mode.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/denismarchenkoRelativity/denismarchenkoRelativity/main/dark_mode.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/denismarchenkoRelativity/denismarchenkoRelativity/main/light_mode.svg">
+  <img alt="Denis Marchenko" src="https://raw.githubusercontent.com/denismarchenkoRelativity/denismarchenkoRelativity/main/dark_mode.svg">
 </picture>
 
 <!--
