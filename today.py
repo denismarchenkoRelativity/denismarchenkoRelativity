@@ -70,6 +70,49 @@ def graph_commits(start_date, end_date):
     return int(request.json()['data']['user']['contributionsCollection']['contributionCalendar']['totalContributions'])
 
 
+def all_time_stats(acc_date):
+    """
+    Sums contribution-calendar totals and commit contributions per calendar year
+    since account creation. Authenticated self-view includes private/org activity.
+    """
+    total_contribs, total_commits = 0, 0
+    query = '''
+    query($start_date: DateTime!, $end_date: DateTime!, $login: String!) {
+        user(login: $login) {
+            contributionsCollection(from: $start_date, to: $end_date) {
+                contributionCalendar { totalContributions }
+                totalCommitContributions
+                restrictedContributionsCount
+            }
+        }
+    }'''
+    for year in range(int(acc_date[:4]), datetime.datetime.now(datetime.timezone.utc).year + 1):
+        query_count('graph_commits')
+        variables = {'start_date': f'{year}-01-01T00:00:00Z', 'end_date': f'{year}-12-31T23:59:59Z', 'login': USER_NAME}
+        coll = simple_request(all_time_stats.__name__, query, variables).json()['data']['user']['contributionsCollection']
+        total_contribs += coll['contributionCalendar']['totalContributions']
+        total_commits += coll['totalCommitContributions'] + coll['restrictedContributionsCount']
+    return total_contribs, total_commits
+
+
+def repos_contributed():
+    """
+    Total distinct repositories ever contributed to (commits, PRs, reviews, created)
+    """
+    query_count('graph_repos_stars')
+    query = '''
+    query($login: String!) {
+        user(login: $login) {
+            repositoriesContributedTo(first: 1, includeUserRepositories: true,
+                contributionTypes: [COMMIT, PULL_REQUEST, REPOSITORY, PULL_REQUEST_REVIEW]) {
+                totalCount
+            }
+        }
+    }'''
+    request = simple_request(repos_contributed.__name__, query, {'login': USER_NAME})
+    return request.json()['data']['user']['repositoriesContributedTo']['totalCount']
+
+
 def top_languages(max_langs=3):
     """
     Aggregates language byte sizes across accessible non-fork repositories
@@ -351,20 +394,22 @@ def stars_counter(data):
     return total_stars
 
 
-def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data, contrib_year_data, top_langs_data):
+def svg_overwrite(filename, age_data, commit_data, star_data, repo_data, contrib_data, follower_data, loc_data, contrib_year_data, top_langs_data, contrib_total_data, repos_total_data):
     """
     Parse SVG files and update elements with my age, commits, stars, repositories, and lines written
     """
     tree = etree.parse(filename)
     root = tree.getroot()
     justify_format(root, 'contrib_year_data', contrib_year_data, 30)
+    justify_format(root, 'contrib_total_data', contrib_total_data, 31)
+    justify_format(root, 'repos_total_data', repos_total_data, 27)
     justify_format(root, 'top_langs_data', top_langs_data, 42)
-    justify_format(root, 'commit_data', commit_data, 22)
+    justify_format(root, 'commit_data', commit_data, 11)
     justify_format(root, 'star_data', star_data, 14)
     justify_format(root, 'repo_data', repo_data, 6)
     justify_format(root, 'contrib_data', contrib_data)
     justify_format(root, 'follower_data', follower_data, 10)
-    justify_format(root, 'loc_data', loc_data[2], 9)
+    justify_format(root, 'loc_data', loc_data[2], 7)
     justify_format(root, 'loc_add', loc_data[0])
     justify_format(root, 'loc_del', loc_data[1], 7)
     tree.write(filename, encoding='utf-8', xml_declaration=True)
@@ -501,11 +546,16 @@ if __name__ == '__main__':
     formatter('yearly contributions', contrib_year_time)
     top_langs_data, top_langs_time = perf_counter(top_languages)
     formatter('top languages', top_langs_time)
+    all_time, all_time_t = perf_counter(all_time_stats, acc_date)
+    contrib_total_data, commit_total_data = all_time
+    formatter('all-time stats', all_time_t)
+    repos_total_data, repos_total_t = perf_counter(repos_contributed)
+    formatter('repos contributed', repos_total_t)
 
     for index in range(len(total_loc)-1): total_loc[index] = '{:,}'.format(total_loc[index])
 
-    svg_overwrite('dark_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data)
-    svg_overwrite('light_mode.svg', age_data, commit_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data)
+    svg_overwrite('dark_mode.svg', age_data, commit_total_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data, contrib_total_data, repos_total_data)
+    svg_overwrite('light_mode.svg', age_data, commit_total_data, star_data, repo_data, contrib_data, follower_data, total_loc[:-1], contrib_year_data, top_langs_data, contrib_total_data, repos_total_data)
 
     print('\033[F\033[F\033[F\033[F\033[F\033[F\033[F\033[F',
         '{:<21}'.format('Total function time:'), '{:>11}'.format('%.4f' % (user_time + age_time + loc_time + commit_time + star_time + repo_time + contrib_time)),
