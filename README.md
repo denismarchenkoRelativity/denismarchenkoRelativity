@@ -9,3 +9,4 @@ which runs today.py to refresh the GitHub Stats block (repos, commits, stars, fo
 Photo: replace the <rect>/<text> "DM" block in dark_mode.svg and light_mode.svg with
 <image href="data:image/png;base64,...." x="15" y="15" width="350" height="480"/>.
 -->
+
